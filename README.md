@@ -10,11 +10,7 @@ A machine learning project to forecast bike rental demand using temporal, weathe
 
 | Sl. No. | Student Name | SRN / ID |
 | :---: | :--- | :--- |
-| 1 | *[Team Member 1]* | *[SRN]* |
-| 2 | *[Team Member 2]* | *[SRN]* |
+| 1 | Dabbugunta Venya Anand | PES1UG24AM074 |
+| 2 | Dhruv Talavat | PES1UG24AM087 |
 
 ---
-
-## Status
-
-> ⚠️ **Note:** This project is currently under active development. Implementation details, notebooks, and source code will be added soon.
