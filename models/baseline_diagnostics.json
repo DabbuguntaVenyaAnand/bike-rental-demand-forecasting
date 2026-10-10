@@ -1,0 +1,55 @@
+{
+  "chosen_model": "random_forest",
+  "best_params": {
+    "reg__max_depth": null,
+    "reg__min_samples_leaf": 1,
+    "reg__n_estimators": 400
+  },
+  "engineered_features": [
+    "hour_sin",
+    "hour_cos",
+    "dayofweek_sin",
+    "dayofweek_cos",
+    "month_sin",
+    "month_cos",
+    "is_rush_hour",
+    "is_weekend"
+  ],
+  "features": [
+    "atemp",
+    "hum",
+    "windspeed",
+    "hour_sin",
+    "hour_cos",
+    "dayofweek_sin",
+    "dayofweek_cos",
+    "month_sin",
+    "month_cos",
+    "is_rush_hour",
+    "is_weekend",
+    "peak_time",
+    "temp_bucket",
+    "season_label",
+    "weathersit_label",
+    "mnth",
+    "yr",
+    "holiday",
+    "workingday"
+  ],
+  "linear": {
+    "rmse": 119.47158048191604,
+    "rmsle": 1.0495393302587765,
+    "mae": 90.54448551755156,
+    "r2": 0.7057750036012767
+  },
+  "random_forest": {
+    "rmse": 79.69506470977927,
+    "rmsle": 0.41046680587448087,
+    "mae": 52.66717618119707,
+    "r2": 0.8690778274611526
+  },
+  "cv_best_score_rmse": 80.63266799483546,
+  "temporal_split_date_threshold": "2012-08-07",
+  "reference_paper": "Du, He, Zhechev - Forecasting Bike Rental Demand",
+  "version": "person-a-baseline-v2-paper-aligned"
+}
