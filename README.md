@@ -1,100 +1,81 @@
 # Forecasting Bike Rental Demand
 
-**Machine Learning Mini-Project — Project No. 87**
+Machine Learning Mini-Project — **Project No. 87**
 
-This project predicts **hourly bike rental demand** using temporal, calendar, and weather-related features. The task is formulated as a supervised **regression** problem using the UCI Bike Sharing hourly dataset.
+This project predicts **hourly bike rental demand** using temporal, calendar, and weather-related information.
 
-The implementation includes exploratory data analysis, leakage-safe feature engineering, temporal validation, comparison of multiple regression models, final model selection, and a Streamlit-based live prediction demo.
-
----
-
-## Team Members
-
-| Student Name | SRN |
-|---|---|
-| Dabbugunta Venya Anand | PES1UG24AM074 |
-| Dhruv Talavat | PES1UG24AM087 |
+The problem is formulated as a supervised **regression** task using the UCI Bike Sharing hourly dataset. The implementation covers data understanding, leakage-safe feature engineering, temporal validation, regression model comparison, final model selection, and an interactive Streamlit prediction demo.
 
 ---
 
 ## Problem Statement
 
-Bike-sharing demand varies strongly with factors such as:
+Bike rental demand varies significantly depending on factors such as time of day, day of week, season, weather, humidity, windspeed, holidays, and working-day patterns.
 
-- hour of day
-- weekday / weekend patterns
-- working-day status
-- season
-- weather
-- feels-like temperature
-- humidity
-- windspeed
+The objective of this project is to learn these relationships from historical bike-sharing data and predict the expected number of bike rentals for a given hourly scenario.
 
-The objective is to learn these relationships from historical hourly observations and estimate the expected number of bike rentals for a future riding scenario.
-
-**Target variable:** `cnt` — total hourly bike rentals.
+**Target variable:** `cnt` — total number of bike rentals in an hour.
 
 ---
 
 ## Dataset
 
-We use the **hourly Bike Sharing Dataset** originally published through the UCI Machine Learning Repository.
+The project uses the **Bike Sharing Dataset** from the UCI Machine Learning Repository.
 
-The dataset contains **17,379 hourly observations** from **2011–2012**.
+The hourly dataset contains **17,379 observations** from **2011 and 2012**.
 
 Important variables include:
 
-- `dteday` — date
-- `season` — season code
-- `yr` — year indicator
-- `mnth` — month
-- `hr` — hour
-- `holiday` — public-holiday indicator
-- `weekday` — day of week
-- `workingday` — working-day indicator
-- `weathersit` — weather condition
-- `temp` — normalized temperature
-- `atemp` — normalized feels-like temperature
-- `hum` — normalized humidity
-- `windspeed` — normalized windspeed
-- `casual` — casual-user rentals
-- `registered` — registered-user rentals
-- `cnt` — total rentals
+| Feature | Description |
+|---|---|
+| `dteday` | Date |
+| `season` | Season |
+| `yr` | Year indicator |
+| `mnth` | Month |
+| `hr` | Hour |
+| `holiday` | Holiday indicator |
+| `weekday` | Day of week |
+| `workingday` | Working-day indicator |
+| `weathersit` | Weather condition |
+| `temp` | Normalized temperature |
+| `atemp` | Normalized feels-like temperature |
+| `hum` | Normalized humidity |
+| `windspeed` | Normalized windspeed |
+| `casual` | Casual-user rentals |
+| `registered` | Registered-user rentals |
+| `cnt` | Total rentals |
 
-`casual` and `registered` are **not used as model inputs**, because:
+Since:
 
 ```text
 cnt = casual + registered
 ```
 
-Using them would introduce target leakage.
+the columns `casual` and `registered` are excluded from model inputs to prevent **target leakage**.
 
-The raw dataset is not committed to the repository. It can be downloaded automatically using the provided script.
+The identifier column `instant` and the target `cnt` are also excluded from the feature matrix.
 
 ---
 
 ## Project Workflow
 
 ```text
-Dataset
-   ↓
+Raw Dataset
+    ↓
 Data Understanding & EDA
-   ↓
-Temporal Train/Test Split
-   ↓
+    ↓
+Chronological Train/Test Split
+    ↓
 Feature Engineering
-   ↓
-Model Training + TimeSeriesSplit Validation
-   ↓
-Linear Regression
-KNN Regression
-Random Forest
-Gradient Boosting
-   ↓
-RMSLE-based Comparison
-   ↓
+    ↓
+Temporal Cross-Validation
+    ↓
+Model Training
+    ↓
+Model Comparison
+    ↓
 Final Model Selection
-   ↓
+    ↓
 Streamlit Prediction Demo
 ```
 
@@ -102,22 +83,18 @@ Streamlit Prediction Demo
 
 ## Exploratory Data Analysis
 
-The EDA pipeline studies demand patterns across time and weather conditions, including:
+The data-understanding stage examines:
 
 - target distribution
-- daily rental trend
-- hourly demand
+- hourly demand patterns
+- daily demand trends
 - seasonal demand
 - weather-condition demand
-- feels-like temperature vs demand
-- humidity vs demand
-- windspeed vs demand
-- correlation structure
-- casual vs registered rentals
-- monthly demand across years
-- working-day vs non-working-day hourly profiles
-
-Generated visualizations are stored in `reports/`.
+- working-day and non-working-day behaviour
+- temperature, humidity, and windspeed relationships
+- casual and registered rental patterns
+- correlations between numerical variables
+- missing and duplicate observations
 
 Run:
 
@@ -125,36 +102,58 @@ Run:
 python src/data_understanding.py
 ```
 
+EDA plots are generated locally during execution and are not stored permanently in the repository.
+
 ---
 
 ## Feature Engineering
 
-The final modeling pipeline creates temporal and behavioral features while avoiding target leakage.
+The final modeling pipeline uses shared feature-engineering logic implemented in:
 
-### Numerical features
+```text
+src/feature_engineering.py
+```
 
-- feels-like temperature (`atemp`)
-- humidity
-- windspeed
-- cyclic hour encoding
-- cyclic weekday encoding
-- cyclic month encoding
+### Numerical Features
 
-### Calendar / categorical features
+```text
+atemp
+hum
+windspeed
+hour_sin
+hour_cos
+dayofweek_sin
+dayofweek_cos
+month_sin
+month_cos
+```
 
-- season
-- weather condition
-- hour
-- weekday
-- month
-- year
-- holiday
-- working day
-- weekend indicator
-- rush-hour indicator
-- weekday/weekend peak-time category
+Cyclic encodings are used for hour, weekday, and month so that periodic relationships are represented correctly.
 
-The following columns are explicitly excluded from model features:
+### Calendar and Categorical Features
+
+```text
+season_label
+weathersit_label
+hr
+weekday
+mnth
+yr
+holiday
+workingday
+peak_time
+is_rush_hour
+is_weekend
+```
+
+Rush hour is defined only for working days during:
+
+```text
+07:00–09:00
+17:00–19:00
+```
+
+The following columns are explicitly excluded from modeling:
 
 ```text
 cnt
@@ -163,52 +162,68 @@ registered
 instant
 ```
 
-All final models use the **same feature set** for a fair comparison.
+All final models use the same feature set for a fair comparison.
 
 ---
 
 ## Validation Strategy
 
-Because the observations are chronological, the project avoids a random train/test split.
+Because the dataset is chronological, a random train/test split is avoided.
 
-The data is sorted by date and hour and split temporally:
-
-- **Training:** 13,915 rows
-- **Holdout test:** 3,464 rows
-- **Split boundary:** 7 August 2012
-
-Hyperparameter selection is performed only on the training period using:
+The data is first sorted by date and hour and then divided temporally.
 
 ```text
+Training rows : 13,915
+Test rows     : 3,464
+Split date    : 2012-08-07
+```
+
+Hyperparameter tuning is performed only on the training period using:
+
+```python
 TimeSeriesSplit(n_splits=4)
 ```
 
-The primary model-selection metric is **RMSLE (Root Mean Squared Logarithmic Error)**.
+This preserves temporal ordering and prevents future observations from being used to predict the past.
 
-Lower RMSLE is better.
+### Primary Metric
 
-The final holdout period is used only for the final generalization comparison.
+The main model-selection metric is:
+
+**RMSLE — Root Mean Squared Logarithmic Error**
+
+Lower RMSLE indicates better performance.
+
+The final production model is selected according to **cross-validation RMSLE**, rather than selecting a model based on performance on the final holdout set.
+
+Additional reported metrics are:
+
+```text
+RMSE
+MAE
+R²
+```
 
 ---
 
-## Models
+## Models Compared
 
-Four regression models are compared under the same validation framework:
+Four regression algorithms are evaluated:
 
-1. **Linear Regression** — simple baseline
+1. **Linear Regression**
 2. **K-Nearest Neighbors Regression**
 3. **Random Forest Regression**
 4. **Gradient Boosting Regression**
 
-KNN uses scaled numerical features because it is distance-based. Tree-based models do not require feature scaling.
+Linear Regression serves as the basic regression baseline.
 
-Random Forest, KNN, and Gradient Boosting are tuned using temporal cross-validation with RMSLE as the scoring metric.
+KNN uses scaled numerical features because the algorithm is distance-based.
+
+Random Forest and Gradient Boosting are nonlinear tree-based ensemble approaches capable of capturing complex relationships between temporal, weather, and demand variables.
 
 ---
 
 ## Final Results
-
-### Temporal holdout performance
 
 | Model | CV RMSLE | Test RMSLE | RMSE | MAE | R² |
 |---|---:|---:|---:|---:|---:|
@@ -217,11 +232,13 @@ Random Forest, KNN, and Gradient Boosting are tuned using temporal cross-validat
 | Gradient Boosting | 0.7257 | 0.6278 | 96.87 | 68.24 | 0.8066 |
 | Linear Regression | 1.2964 | 0.9813 | 112.48 | 83.87 | 0.7392 |
 
-### Selected production model
+### Selected Model
+
+The final production model is:
 
 **Random Forest Regression**
 
-Best cross-validation configuration:
+Selected hyperparameters:
 
 ```text
 n_estimators = 400
@@ -229,56 +246,112 @@ max_depth = None
 min_samples_leaf = 1
 ```
 
-The production model is selected using the **lowest training-period cross-validation RMSLE**, rather than choosing a model based on the final test set.
+Random Forest achieved the lowest cross-validation RMSLE and was therefore selected as the production model.
 
-Detailed results are saved in:
+Its chronological holdout performance was:
 
 ```text
-models/model_metrics.json
-models/model_diagnostics.json
-reports/15_final_model_comparison.png
-reports/16_best_model_pred_vs_actual.png
+RMSLE = 0.4115
+RMSE  = 80.43
+MAE   = 53.13
+R²    = 0.8667
 ```
 
 ---
 
-## Baseline Pipeline
+## Implementation
 
-A separate baseline script is retained for reproducibility of the earlier Linear Regression and Random Forest experiment.
+### `src/data_understanding.py`
 
-Run:
+Performs exploratory data analysis and data-quality checks.
+
+### `src/model_config.py`
+
+Stores shared paths, feature definitions, mappings, and modeling configuration.
+
+### `src/feature_engineering.py`
+
+Implements the shared feature-engineering pipeline used by both training and inference.
+
+### `src/model_training.py`
+
+Defines:
+
+```text
+Linear Regression
+KNN Regression
+Random Forest Regression
+Gradient Boosting Regression
+```
+
+and performs temporal cross-validation and hyperparameter tuning.
+
+### `src/evaluation.py`
+
+Contains evaluation utilities for:
+
+```text
+RMSLE
+RMSE
+MAE
+R²
+```
+
+and generates model-comparison diagnostics.
+
+### `src/train_models.py`
+
+Runs the complete final modeling pipeline:
+
+```text
+Load data
+→ engineer features
+→ temporal split
+→ train models
+→ temporal cross-validation
+→ evaluate holdout performance
+→ select production model
+→ save generated artifacts
+```
+
+### `src/preprocess_and_baseline.py`
+
+Contains the earlier Linear Regression and Random Forest baseline experiment.
+
+The authoritative final model-selection pipeline is:
 
 ```bash
-python src/preprocess_and_baseline.py
+python src/train_models.py
 ```
 
-Its artifacts are stored in:
+### `app/demo_app.py`
 
-```text
-models/baseline_metrics.json
-models/baseline_diagnostics.json
-reports/13_baseline_pred_vs_actual.png
-reports/14_baseline_residuals.png
-```
+Provides the Streamlit interface for live bike-demand prediction.
 
-The final model comparison in `src/train_models.py` should be treated as the authoritative model-selection pipeline.
+The demo reuses the same feature-engineering logic as the training pipeline.
 
 ---
 
-## Live Demo
+## Streamlit Demo
 
-The project includes a Streamlit interface for interactive demand prediction.
+The interactive application allows a user to specify a bike-rental scenario.
 
-The user selects a date and weather conditions, and the application automatically derives consistent calendar features such as:
+The user selects a date, hour, weather condition, feels-like temperature, humidity, windspeed, and holiday status.
 
-- year
-- month
-- weekday
-- season
-- weekend status
-- working-day status
+Calendar information such as:
 
-The demo then reuses the same feature-engineering logic as the training pipeline before sending the feature vector to the final production model.
+```text
+year
+month
+weekday
+season
+weekend status
+working-day status
+```
+
+is derived consistently by the application.
+
+The inputs are passed through the shared feature-engineering pipeline before prediction using the trained Random Forest production model.
 
 Run:
 
@@ -286,45 +359,30 @@ Run:
 streamlit run app/demo_app.py
 ```
 
-> `models/production_model.pkl` is generated locally by `src/train_models.py` and is not required to be stored in Git.
+The production model must first be generated by running:
+
+```bash
+python src/train_models.py
+```
 
 ---
 
 ## Repository Structure
+
+Only source code and code documentation are maintained in the GitHub repository.
 
 ```text
 bike-rental-demand-forecasting/
 │
 ├── README.md
 ├── requirements.txt
+├── .gitignore
 │
 ├── app/
 │   └── demo_app.py
 │
-├── data/
-│   └── hour.csv                  # downloaded locally; gitignored
-│
-├── docs/
-│   ├── guidelines_text.txt
-│   ├── reference_paper_text.txt
-│   └── team_writeup.md
-│
-├── models/
-│   ├── baseline_diagnostics.json
-│   ├── baseline_metrics.json
-│   ├── model_diagnostics.json
-│   ├── model_metrics.json
-│   └── temp_bucket_edges.json
-│
-├── reports/
-│   ├── 01_target_distribution.png
-│   ├── ...
-│   ├── 15_final_model_comparison.png
-│   └── 16_best_model_pred_vs_actual.png
-│
 ├── scripts/
-│   ├── download_data.py
-│   └── md2pdf.py
+│   └── download_data.py
 │
 └── src/
     ├── data_understanding.py
@@ -336,50 +394,59 @@ bike-rental-demand-forecasting/
     └── train_models.py
 ```
 
+The following are generated or downloaded locally and are not required to be stored in Git:
+
+```text
+data/       → downloaded dataset
+models/     → trained models and metric files
+reports/    → generated visualizations and diagnostics
+.venv/      → local Python environment
+```
+
+Project write-ups and presentation files are maintained separately from the source-code repository.
+
 ---
 
-## Setup
+## Setup and Installation
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/DabbuguntaVenyaAnand/bike-rental-demand-forecasting.git
 cd bike-rental-demand-forecasting
 ```
 
-### 2. Create a virtual environment
+### 2. Create a Virtual Environment
 
 ```bash
 python -m venv .venv
 ```
 
-Activate it.
-
-**Windows Git Bash**
+For Windows Git Bash:
 
 ```bash
 source .venv/Scripts/activate
 ```
 
-**Windows PowerShell**
+For Windows PowerShell:
 
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
 
-**Linux / macOS**
+For Linux/macOS:
 
 ```bash
 source .venv/bin/activate
 ```
 
-### 3. Install dependencies
+### 3. Install Dependencies
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-### 4. Download the dataset
+### 4. Download the Dataset
 
 ```bash
 python scripts/download_data.py
@@ -391,21 +458,21 @@ This creates:
 data/hour.csv
 ```
 
-### 5. Run EDA
+### 5. Run Exploratory Data Analysis
 
 ```bash
 python src/data_understanding.py
 ```
 
-### 6. Train and compare the final models
+### 6. Train and Evaluate the Models
 
 ```bash
 python src/train_models.py
 ```
 
-This generates the final metrics, plots, and local production model.
+This performs temporal model comparison and generates the local production model and evaluation artifacts.
 
-### 7. Launch the demo
+### 7. Launch the Demo
 
 ```bash
 streamlit run app/demo_app.py
@@ -413,18 +480,18 @@ streamlit run app/demo_app.py
 
 ---
 
-## Reproducing the Complete Pipeline
+## Reproducing the Project
 
 From a fresh clone:
 
 ```bash
 python -m venv .venv
 source .venv/Scripts/activate
-python -m pip install -r requirements.txt
 
+python -m pip install -r requirements.txt
 python scripts/download_data.py
+
 python src/data_understanding.py
-python src/preprocess_and_baseline.py
 python src/train_models.py
 
 streamlit run app/demo_app.py
@@ -436,7 +503,7 @@ streamlit run app/demo_app.py
 
 The project problem statement is based on:
 
-**Jimmy Du, Rolland He, Zhivko Zhechev — _Forecasting Bike Rental Demand_**, Stanford CS229 Project, 2014.
+**Jimmy Du, Rolland He, Zhivko Zhechev — _Forecasting Bike Rental Demand_, Stanford CS229 Project, 2014.**
 
 Reference paper:
 
