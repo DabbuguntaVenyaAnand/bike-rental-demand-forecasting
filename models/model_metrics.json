@@ -1,0 +1,39 @@
+{
+  "selection_rule": "lowest TimeSeriesSplit CV RMSLE on training period",
+  "selected_model": "Random Forest",
+  "split_boundary": "2012-08-07",
+  "results": [
+    {
+      "model": "Linear Regression",
+      "cv_rmsle": 1.2963534041269436,
+      "test_rmsle": 0.9813128746986753,
+      "rmse": 112.47790046389646,
+      "mae": 83.8716387741509,
+      "r2": 0.7392137133330727
+    },
+    {
+      "model": "KNN Regression",
+      "cv_rmsle": 0.5976047289355843,
+      "test_rmsle": 0.5334514836778675,
+      "rmse": 122.35219247645041,
+      "mae": 83.58859641014311,
+      "r2": 0.6914156759373924
+    },
+    {
+      "model": "Random Forest",
+      "cv_rmsle": 0.48333656514130113,
+      "test_rmsle": 0.41151879550532466,
+      "rmse": 80.42811830005604,
+      "mae": 53.1335923289206,
+      "r2": 0.8666582457786384
+    },
+    {
+      "model": "Gradient Boosting",
+      "cv_rmsle": 0.7257182434277628,
+      "test_rmsle": 0.6277990787651242,
+      "rmse": 96.86688659708787,
+      "mae": 68.24435409399688,
+      "r2": 0.8065801550550835
+    }
+  ]
+}

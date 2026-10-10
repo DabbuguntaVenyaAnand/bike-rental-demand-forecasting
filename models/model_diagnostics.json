@@ -1,0 +1,43 @@
+{
+  "selected_model": "Random Forest",
+  "selected_params": {
+    "reg__max_depth": null,
+    "reg__min_samples_leaf": 1,
+    "reg__n_estimators": 400
+  },
+  "features": [
+    "atemp",
+    "hum",
+    "windspeed",
+    "hour_sin",
+    "hour_cos",
+    "dayofweek_sin",
+    "dayofweek_cos",
+    "month_sin",
+    "month_cos",
+    "season_label",
+    "weathersit_label",
+    "hr",
+    "weekday",
+    "mnth",
+    "yr",
+    "holiday",
+    "workingday",
+    "peak_time",
+    "is_rush_hour",
+    "is_weekend"
+  ],
+  "excluded_leakage_columns": [
+    "casual",
+    "registered",
+    "cnt",
+    "instant"
+  ],
+  "cv": "TimeSeriesSplit(n_splits=4)",
+  "primary_metric": "RMSLE",
+  "notes": [
+    "All final models use the same feature set for fair comparison.",
+    "Quantile temperature buckets are omitted to avoid split inconsistency.",
+    "Hour, weekday and month use categorical/cyclic representations."
+  ]
+}
