@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 import joblib
@@ -29,13 +30,6 @@ from model_config import ALL_FEATURES
 MODEL_PATH = ROOT / "models" / "production_model.pkl"
 DIAGNOSTICS_PATH = ROOT / "models" / "model_diagnostics.json"
 
-SEASON_TO_CODE = {
-    "Winter": 1,
-    "Spring": 2,
-    "Summer": 3,
-    "Fall": 4,
-}
-
 WEATHER_TO_CODE = {
     "Clear / Few clouds": 1,
     "Mist / Cloudy": 2,
@@ -43,16 +37,11 @@ WEATHER_TO_CODE = {
     "Heavy rain / Snow / Fog": 4,
 }
 
-# UCI Bike Sharing dataset coding:
-# Sunday = 0, Monday = 1, ..., Saturday = 6.
-WEEKDAY_TO_CODE = {
-    "Sunday": 0,
-    "Monday": 1,
-    "Tuesday": 2,
-    "Wednesday": 3,
-    "Thursday": 4,
-    "Friday": 5,
-    "Saturday": 6,
+SEASON_LABELS = {
+    1: "Winter",
+    2: "Spring",
+    3: "Summer",
+    4: "Fall",
 }
 
 YEAR_TO_CODE = {
@@ -60,10 +49,45 @@ YEAR_TO_CODE = {
     2012: 1,
 }
 
+WEEKDAY_LABELS = {
+    0: "Sunday",
+    1: "Monday",
+    2: "Tuesday",
+    3: "Wednesday",
+    4: "Thursday",
+    5: "Friday",
+    6: "Saturday",
+}
+
+
+def uci_weekday(selected_date: date) -> int:
+    """Convert Python Monday=0..Sunday=6 to UCI Sunday=0..Saturday=6."""
+    return (selected_date.weekday() + 1) % 7
+
+
+def derive_season(selected_date: date) -> int:
+    """
+    Derive the season code used by the Bike Sharing dataset.
+
+    Boundaries mirror the seasonal transitions present in the 2011–2012 data:
+    Winter: Dec 21 – Mar 20
+    Spring: Mar 21 – Jun 20
+    Summer: Jun 21 – Sep 22
+    Fall:   Sep 23 – Dec 20
+    """
+    md = (selected_date.month, selected_date.day)
+
+    if (3, 21) <= md < (6, 21):
+        return 2
+    if (6, 21) <= md < (9, 23):
+        return 3
+    if (9, 23) <= md < (12, 21):
+        return 4
+    return 1
+
 
 def normalize_atemp(celsius: float) -> float:
-    """Normalize feels-like temperature exactly as documented by UCI."""
-    # atemp = (t - (-16)) / (50 - (-16))
+    """Normalize feels-like temperature using the UCI atemp definition."""
     return float(np.clip((celsius + 16.0) / 66.0, 0.0, 1.0))
 
 
@@ -107,28 +131,23 @@ st.set_page_config(
 
 st.title("🚲 Bike Rental Demand Forecasting")
 st.caption(
-    "Enter a riding scenario to estimate the expected number of bike rentals "
-    "for that hour."
+    "Estimate hourly bike rental demand from calendar and weather conditions."
 )
 
 with st.sidebar:
-    st.header("Calendar & weather")
+    st.header("Scenario")
 
-    year = st.selectbox("Year", (2011, 2012), index=1)
-    month = st.slider("Month", 1, 12, 7)
-
-    weekday_label = st.selectbox(
-        "Day of week",
-        tuple(WEEKDAY_TO_CODE.keys()),
-        index=5,  # Friday
+    selected_date = st.date_input(
+        "Date",
+        value=date(2012, 7, 6),
+        min_value=date(2011, 1, 1),
+        max_value=date(2012, 12, 31),
     )
 
-    holiday = st.checkbox("Public holiday", value=False)
-
-    season_label = st.radio(
-        "Season",
-        tuple(SEASON_TO_CODE.keys()),
-        index=2,
+    holiday = st.checkbox(
+        "Public holiday",
+        value=False,
+        help="Check this only if the selected date is a public holiday.",
     )
 
     weather_label = st.selectbox(
@@ -137,8 +156,27 @@ with st.sidebar:
         index=0,
     )
 
-weekday = WEEKDAY_TO_CODE[weekday_label]
+
+year = selected_date.year
+month = selected_date.month
+weekday = uci_weekday(selected_date)
+season = derive_season(selected_date)
 workingday = derive_workingday(weekday, holiday)
+
+st.subheader("Derived calendar features")
+
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Day", WEEKDAY_LABELS[weekday])
+c2.metric("Month", selected_date.strftime("%B"))
+c3.metric("Season", SEASON_LABELS[season])
+c4.metric("Working day", "Yes" if workingday else "No")
+
+st.caption(
+    "Calendar features are derived automatically from the selected date to keep "
+    "the model inputs internally consistent."
+)
+
+st.markdown("---")
 
 col1, col2, col3 = st.columns(3)
 
@@ -154,20 +192,16 @@ with col1:
 
 with col2:
     humidity = st.slider("Humidity (%)", 0, 100, 55)
-    st.metric("Derived working-day status", "Yes" if workingday else "No")
 
 with col3:
     windspeed = st.slider("Windspeed (km/h)", 0.0, 67.0, 12.0, 0.5)
-    st.caption(
-        "Working-day status is derived automatically from weekday + holiday."
-    )
 
 st.markdown("---")
 
 # Build a row in the original UCI feature representation first.
 raw_input = pd.DataFrame(
     {
-        "season": [SEASON_TO_CODE[season_label]],
+        "season": [season],
         "yr": [YEAR_TO_CODE[year]],
         "mnth": [month],
         "hr": [hour],
@@ -194,7 +228,7 @@ pending = st.session_state.get("prediction_input")
 model = load_model()
 
 if pending is None:
-    st.info("Adjust the inputs and click **Predict demand**.")
+    st.info("Adjust the scenario and click **Predict demand**.")
 elif model is None:
     st.warning(
         "No final trained model was found at `models/production_model.pkl`. "
@@ -214,10 +248,10 @@ else:
         st.dataframe(pending.T, use_container_width=True)
 
 st.markdown("---")
-st.subheader("What drives the prediction?")
+st.subheader("About the prediction")
 st.write(
-    "The model combines time-of-day and calendar patterns with weather-related "
-    "conditions such as feels-like temperature, humidity and windspeed. "
-    "The final production model was selected using temporal cross-validation "
-    "with RMSLE as the primary evaluation metric."
+    "The model combines temporal patterns with weather-related conditions such "
+    "as feels-like temperature, humidity and windspeed. The production model "
+    "was selected using temporal cross-validation with RMSLE as the primary "
+    "evaluation metric."
 )
