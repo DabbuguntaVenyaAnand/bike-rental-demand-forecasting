@@ -52,6 +52,9 @@ python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt        # Windows Git Bash
 # source .venv/bin/activate && pip install -r requirements.txt   # Linux/Mac
 
+# 0) Fetch the dataset (data/ is gitignored; one-time step)
+.venv/Scripts/python scripts/download_data.py
+
 # 1) Dataset understanding + EDA -> writes reports/*.png
 .venv/Scripts/python src/data_understanding.py
 

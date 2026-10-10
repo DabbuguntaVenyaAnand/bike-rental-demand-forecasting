@@ -142,7 +142,30 @@ Best model per the script: **Random Forest** (`max_depth=None, min_samples_leaf=
 - `models/baseline_diagnostics.json` — model name, hyperparameters, full feature list, CV score, split date, paper-alignment notes.
 - `reports/13_baseline_pred_vs_actual.png`, `reports/14_baseline_residuals.png` — visual comparison.
 
-## 8. Limitations / Handoff Notes
+## 8. Conclusions (Person A half)
+
+- The dataset is clean (no missing/duplicated rows) but demand is strongly
+  seasonal, hourly and weather-driven: hour of day is by far the strongest
+  signal, with weather contributing a smaller, consistent effect — the same
+  conclusion the reference paper reached from its variable-importance study.
+- Paper-aligned feature engineering — peak-hour buckets (weekday 7–9 AM &
+  5–7 PM, weekend 10 AM–6 PM), quantile temperature buckets, cyclic
+  hour/weekday/month encodings, and dropping collinear raw `temp` — plus a
+  leakage-safe temporal split produced a strong baseline.
+- **Random Forest is the Person A baseline to beat: RMSLE 0.410, RMSE 79.7,
+  R² 0.869** on the held-out 2012-08-08 → 2012-12-31 period, versus Linear
+  Regression's RMSLE 1.050 / R² 0.706. This reproduces the reference paper's
+  central finding that tree-based models substantially outperform plain
+  linear models on this data.
+- Deliverables from this half: reproducible EDA pipeline (12 figures), the
+  preprocessing/feature-engineering module, baseline artifacts for
+  comparison, a working Streamlit input interface, and this write-up plus the
+  slide deck.
+- **Open for Person B:** advanced models (GBM/SVR/CTree/stacking per paper
+  §3) must beat RMSLE 0.410 on the same temporal split; conclusions are
+  completed after that comparison in Person B's results section.
+
+## 9. Limitations / Handoff Notes
 
 - **Split difference:** the paper's Kaggle split is not time-ordered; ours is. Expect Person B's CV-vs-test gap to be smaller per §5.4 of the paper but absolute errors to differ from leaderboard numbers.
 - `weathersit == 4` (severe weather) has almost no rows — predictions in that regime are extrapolation, not signal.
