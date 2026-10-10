@@ -1,4 +1,4 @@
-"""Bike Rental Demand Forecasting - Person A.
+"""Bike Rental Demand Forecasting - baseline preprocessing and modeling.
 
 Preprocessing, feature engineering, temporal split and baseline models
 (Linear Regression + Random Forest) with leakage-safe inputs only.
@@ -35,7 +35,7 @@ import seaborn as sns
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import make_scorer, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -84,7 +84,11 @@ ALL_CATEGORICAL = [
 
 def compute_rmsle(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """RMSLE - the Kaggle competition metric used in the reference paper."""
+    y_pred = np.clip(np.asarray(y_pred, dtype=float), 0, None)
     return float(np.sqrt(np.mean((np.log1p(y_pred) - np.log1p(y_true)) ** 2)))
+
+
+RMSLE_SCORER = make_scorer(compute_rmsle, greater_is_better=False)
 
 
 def score_report(y_true, y_pred) -> dict:
@@ -117,7 +121,9 @@ def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
     out["dayofweek_cos"] = np.cos(2 * np.pi * out["weekday"] / 7.0)
     out["month_sin"] = np.sin(2 * np.pi * (out["mnth"] - 1) / 12.0)
     out["month_cos"] = np.cos(2 * np.pi * (out["mnth"] - 1) / 12.0)
-    out["is_rush_hour"] = out["hr"].isin(WEEKDAY_PEAK_HOURS).astype(int)
+    out["is_rush_hour"] = (
+        (out["workingday"] == 1) & out["hr"].isin(WEEKDAY_PEAK_HOURS)
+    ).astype(int)
     # NOTE: the UCI dataset codes weekday as Sunday=0 ... Saturday=6,
     # so the weekend days are 0 and 6 (NOT a >= 5 comparison).
     out["is_weekend"] = out["weekday"].isin([0, 6]).astype(int)
@@ -156,7 +162,7 @@ def fit_temp_bucket_edges(train_df: pd.DataFrame) -> np.ndarray:
 
 def assign_temp_bucket(atemp_norm, edges: np.ndarray):
     """Assign bucket labels using fixed edges. Input must already be in the
-    dataset's normalized atemp space (UCI normalized atemp = raw / 50 C)."""
+    dataset's normalized atemp space. UCI defines atemp using a -16°C to +50°C range, i.e. (T + 16) / 66 for a Celsius value."""
     return pd.cut(
         atemp_norm, bins=edges, labels=TEMP_BUCKET_LABELS, include_lowest=True,
     ).astype(str)
@@ -273,7 +279,7 @@ def main() -> None:
         rf_pipe,
         param_grid,
         cv=TimeSeriesSplit(n_splits=4),
-        scoring="neg_root_mean_squared_error",
+        scoring=RMSLE_SCORER,
         n_jobs=-1,
     )
     gs.fit(X_tr, y_tr)
@@ -312,10 +318,10 @@ def main() -> None:
                 "features": ALL_NUMERIC + ALL_CATEGORICAL,
                 "linear": lin_metrics,
                 "random_forest": rf_metrics,
-                "cv_best_score_rmse": float(-gs.best_score_),
+                "cv_best_score_rmsle": float(-gs.best_score_),
                 "temporal_split_date_threshold": str(split_day.date()),
                 "reference_paper": "Du, He, Zhechev - Forecasting Bike Rental Demand",
-                "version": "person-a-baseline-v2-paper-aligned",
+                "version": "baseline-v3-rmsle-tuned",
             },
             indent=2,
         )

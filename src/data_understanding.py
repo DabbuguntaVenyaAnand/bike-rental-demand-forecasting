@@ -1,8 +1,8 @@
-"""Bike Rental Demand Forecasting - Person A.
+"""Bike Rental Demand Forecasting - data understanding and EDA.
 
-Data understanding and EDA only. All modeling lives in
-src/preprocess_and_baseline.py (and src/advanced_models.py) so that rerunning
-this script can never overwrite baseline artifacts.
+This script performs dataset inspection and exploratory data analysis only.
+Model training is handled by the dedicated training scripts so rerunning EDA
+never overwrites model artifacts.
 
 Writes: reports/01..12 png figures.
 
@@ -50,7 +50,7 @@ def data_understanding(df: pd.DataFrame) -> None:
     print(df.dtypes)
     print("\n=== MISSING VALUES (total) ===")
     print(df.isna().sum())
-    print("\n=== DUPLICATED ROWS ===", df.duplicated().sum())
+    print("\n=== DUPLICATE HOURLY OBSERVATIONS (dteday, hr) ===", df.duplicated(subset=["dteday", "hr"]).sum())
     print("\n=== DATE RANGE ===")
     print(df["dteday"].min(), "->", df["dteday"].max())
     print("\n=== TARGET STATISTICS ===")
