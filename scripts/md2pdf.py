@@ -1,7 +1,7 @@
 """Render project markdown documents to PDF using headless Chrome.
 
 Usage:
-    .venv/Scripts/python scripts/md2pdf.py docs/person_a_writeup.md docs/team_writeup.md
+    .venv/Scripts/python scripts/md2pdf.py docs/team_writeup.md
 
 Output: same path with .pdf extension.
 """
