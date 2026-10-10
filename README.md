@@ -17,9 +17,9 @@ A machine learning project to forecast bike rental demand using temporal, weathe
 
 ## Task split
 
-**Person A (Dhruv)** — dataset understanding, EDA, preprocessing, feature engineering, baseline models, problem/dataset/EDA write-up & slides, demo input side — on branch `feature/person-a-data-pipeline`.
+**Person A (Dhruv Talavat)** — dataset understanding, EDA, preprocessing, feature engineering, baseline models, problem/dataset/EDA write-up & slides, demo input side — on branch `feature/person-a-data-pipeline`.
 
-**Person B (Anand)** — advanced models (GBM, SVR, stacking — cf. paper §3), model comparison & evaluation, best-model selection, inference pipeline, models/results write-up & slides, demo prediction side.
+**Person B (Dabbugunta Venya Anand)** — advanced models (GBM, SVR, stacking — cf. paper §3), model comparison & evaluation, best-model selection, inference pipeline, models/results write-up & slides, demo prediction side.
 
 **Both** — methodology slide, README, final integration/testing, demo/conclusion, viva prep.
 
