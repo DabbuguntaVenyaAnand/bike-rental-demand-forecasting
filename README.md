@@ -73,10 +73,12 @@ Primary metric is **RMSLE** (same as the Kaggle competition in the reference pap
 
 | Model | RMSLE | RMSE | MAE | R² |
 |---|---:|---:|---:|---:|
-| Linear Regression | 1.050 | 119.47 | 90.54 | 0.706 |
-| Random Forest (best) | **0.410** | **79.70** | **52.67** | **0.869** |
+| Linear Regression | 1.045 | 121.13 | 91.05 | 0.698 |
+| Random Forest (best) | **0.410** | **79.98** | **52.84** | **0.868** |
 
-Best model: Random Forest (`max_depth=None, n_estimators=400, min_samples_leaf=1`), selected via `TimeSeriesSplit(4)` grid search, evaluated on a held-out test period (2012-08-08 → 2012-12-31). Split boundary: 2012-08-07.
+Best model: Random Forest (`max_depth=18, n_estimators=400, min_samples_leaf=1`), selected via `TimeSeriesSplit(4)` grid search, evaluated on a held-out test period (2012-08-08 → 2012-12-31). Split boundary: 2012-08-07.
+
+Advanced models (`src/advanced_models.py`, same features/split): Gradient Boosting RMSLE 0.502 / RMSE 65.3 / R² 0.912, RBF-SVR RMSLE 0.558, and a 50/50 GBM+RF blend at **RMSLE 0.403 / R² 0.896** (best by RMSLE; see `models/advanced_metrics.json`).
 
 ### Paper alignment summary
 

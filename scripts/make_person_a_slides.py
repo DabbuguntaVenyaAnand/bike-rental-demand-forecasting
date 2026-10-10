@@ -145,9 +145,9 @@ def main() -> None:
         prs,
         "Baseline Models (for Person B to beat)",
         [
-            "Linear Regression:  RMSLE 1.050 | RMSE 119.5 | R2 0.706",
-            "Random Forest:      RMSLE 0.410 | RMSE  79.7 | R2 0.869",
-            "Best RF params: max_depth=None, n_estimators=400, min_samples_leaf=1",
+            "Linear Regression:  RMSLE 1.045 | RMSE 121.1 | R2 0.698",
+            "Random Forest:      RMSLE 0.410 | RMSE  80.0 | R2 0.868",
+            "Best RF params: max_depth=18, n_estimators=400, min_samples_leaf=1",
             "Paper's tree models: CTree CV-RMSLE 0.460, RF 0.503 - same pattern:",
             "   tree-based models dominate; plain linear models lag far behind.",
             "Artifacts: models/baseline_model.pkl + baseline_metrics.json +",

@@ -55,6 +55,9 @@ WEATHER_MAP = {1: "Clear", 2: "Cloudy", 3: "Wet", 4: "Severe"}
 WEEKDAY_PEAK_HOURS = (7, 8, 9, 17, 18, 19)
 WEEKEND_PEAK_HOURS = tuple(range(10, 19))  # 10am - 6pm inclusive
 
+TEMP_BUCKET_LABELS = ["cold", "mild", "warm", "hot"]
+TEMP_BUCKET_EDGES: np.ndarray | None = None
+
 NUMERIC_FEATURES = ["atemp", "hum", "windspeed"]
 ENGINEERED_NUMERIC_FEATURES = [
     "hour_sin",
@@ -115,7 +118,9 @@ def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
     out["month_sin"] = np.sin(2 * np.pi * (out["mnth"] - 1) / 12.0)
     out["month_cos"] = np.cos(2 * np.pi * (out["mnth"] - 1) / 12.0)
     out["is_rush_hour"] = out["hr"].isin(WEEKDAY_PEAK_HOURS).astype(int)
-    out["is_weekend"] = (out["weekday"] >= 5).astype(int)
+    # NOTE: the UCI dataset codes weekday as Sunday=0 ... Saturday=6,
+    # so the weekend days are 0 and 6 (NOT a >= 5 comparison).
+    out["is_weekend"] = out["weekday"].isin([0, 6]).astype(int)
 
     def peak_bucket(row) -> str:
         if row["workingday"] == 1:
@@ -128,11 +133,33 @@ def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
 
     out["peak_time"] = out.apply(peak_bucket, axis=1)
 
-    out["temp_bucket"] = (
-        pd.qcut(out["atemp"], q=4, labels=["cold", "mild", "warm", "hot"], duplicates="drop")
-        .astype(str)
-    )
+    if TEMP_BUCKET_EDGES is None:
+        raise RuntimeError(
+            "Call fit_temp_bucket_edges(train_df) before add_engineered_features."
+        )
+    out["temp_bucket"] = assign_temp_bucket(out["atemp"], TEMP_BUCKET_EDGES)
     return out
+
+
+def fit_temp_bucket_edges(train_df: pd.DataFrame) -> np.ndarray:
+    """Fit the atemp quantile bucket edges on TRAINING data only and store them
+    in the module-level TEMP_BUCKET_EDGES, so the same boundaries are reused for
+    test data and for the demo app (no leakage, no inconsistent bucketing)."""
+    global TEMP_BUCKET_EDGES
+    _, edges = pd.qcut(
+        train_df["atemp"], q=4, labels=TEMP_BUCKET_LABELS, retbins=True,
+        duplicates="drop",
+    )
+    TEMP_BUCKET_EDGES = edges
+    return edges
+
+
+def assign_temp_bucket(atemp_norm, edges: np.ndarray):
+    """Assign bucket labels using fixed edges. Input must already be in the
+    dataset's normalized atemp space (UCI normalized atemp = raw / 50 C)."""
+    return pd.cut(
+        atemp_norm, bins=edges, labels=TEMP_BUCKET_LABELS, include_lowest=True,
+    ).astype(str)
 
 
 def feature_matrix(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
@@ -202,6 +229,12 @@ def main() -> None:
         f"Temporal split -> train rows: {len(train):,} | test rows: {len(test):,}"
     )
     print(f"Split boundary date: {split_day.date()}")
+
+    edges = fit_temp_bucket_edges(train)
+    print("Temp bucket edges (train-fitted):", [round(float(e), 4) for e in edges])
+    (MODELS_DIR / "temp_bucket_edges.json").write_text(
+        json.dumps({"edges": [float(e) for e in edges], "labels": TEMP_BUCKET_LABELS})
+    )
 
     X_tr, y_tr = feature_matrix(add_engineered_features(train))
     X_te, y_te = feature_matrix(add_engineered_features(test))

@@ -57,7 +57,9 @@ temp = cols[1].slider("Air temperature (°C)", -5.0, 41.0, 24.0, 0.5)  # shown f
 st.markdown("---")
 
 season_map = {"Winter": 1, "Spring": 2, "Summer": 3, "Fall": 4}
-dow_map = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6}
+# The UCI dataset codes weekday as Sunday=0 ... Saturday=6 (verified against
+# 2011-01-01, a Saturday, which has weekday=6 in hour.csv).
+dow_map = {"Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6}
 weather_map = {"Clear": 1, "Cloudy": 2, "Wet": 3, "Severe": 4}
 yr_map = {2011: 0, 2012: 1}
 
@@ -77,24 +79,33 @@ def _peak_bucket(working: int, hour: int) -> str:
 
 
 # Paper-aligned featurization (temp dropped, peak buckets, temp buckets)
-# Compute the same atemp quantile bin edges the training script's qcut used,
-# so app-side bucketing matches training exactly.
+# Bucket edges are fitted on the training split only and exported by
+# src/preprocess_and_baseline.py; load them here so demo bucketing matches
+# training exactly (UCI atemp in the CSV is already normalized, raw / 50 C).
 TEMP_BUCKET_LABELS = ["cold", "mild", "warm", "hot"]
 
 @st.cache_data
 def _temp_bucket_edges() -> list[float]:
-    data_path = ROOT / "data" / "hour.csv"
-    atemp_series = pd.read_csv(data_path, usecols=["atemp"])["atemp"]
-    _, edges = pd.qcut(atemp_series, q=4, labels=TEMP_BUCKET_LABELS, retbins=True, duplicates="drop")
-    return [float(e) for e in edges]
+    edges_path = ROOT / "models" / "temp_bucket_edges.json"
+    if not edges_path.exists():
+        st.warning(
+            "models/temp_bucket_edges.json missing. "
+            "Re-run src/preprocess_and_baseline.py to regenerate it."
+        )
+        return []
+    import json
+
+    return [float(e) for e in json.loads(edges_path.read_text())["edges"]]
 
 
 def _temp_bucket(atemp_norm: float) -> str:
+    """Bucket an atemp value that is already in the dataset's normalized space."""
     edges = _temp_bucket_edges()
-    atemp_raw = atemp_norm * 50.0
+    if not edges:
+        return "mild"
     idx = 0
     for i, edge in enumerate(edges[1:-1]):  # interior edges (3 for q=4)
-        if atemp_raw >= edge:
+        if atemp_norm >= edge:
             idx = i + 1
     return TEMP_BUCKET_LABELS[idx]
 

@@ -1,7 +1,10 @@
 """Bike Rental Demand Forecasting - Person A.
 
-Data understanding, EDA figures, preprocessing + feature engineering,
-baseline models, and a metrics report.
+Data understanding and EDA only. All modeling lives in
+src/preprocess_and_baseline.py (and src/advanced_models.py) so that rerunning
+this script can never overwrite baseline artifacts.
+
+Writes: reports/01..12 png figures.
 
 Run:
     python src/data_understanding.py
@@ -18,25 +21,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
-import json
 
 sns.set_theme(style="whitegrid", context="talk")
-RANDOM_STATE = 42
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "hour.csv"
 FIG_DIR = ROOT / "reports"
-MODELS_DIR = ROOT / "models"
 
 FIG_DIR.mkdir(exist_ok=True)
-MODELS_DIR.mkdir(exist_ok=True)
 
 SEASON_MAP = {1: "Winter", 2: "Spring", 3: "Summer", 4: "Fall"}
 WEATHER_MAP = {
@@ -64,6 +56,10 @@ def data_understanding(df: pd.DataFrame) -> None:
     print("\n=== TARGET STATISTICS ===")
     print(df["cnt"].describe().round(2))
     print("Skew:", round(df["cnt"].skew(), 3))
+    # Sanity check of the weekday convention (Sunday=0 ... Saturday=6):
+    sample = df.groupby(df["dteday"].dt.day_name())["weekday"].median()
+    print("\n=== WEEKDAY CODES (median code per calendar day) ===")
+    print(sample)
 
 
 def pearson(x: pd.Series, y: pd.Series) -> float:
@@ -78,26 +74,6 @@ def relationship_eda(df: pd.DataFrame) -> None:
         ("windspeed", "cnt", "windspeed (weak driver)"),
     ]:
         print(f"correlation({a}, cnt) = {pearson(df[a], df[b]):.3f}   # {note}")
-
-
-def compute_rmsle(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """RMSLE from the Kaggle competition the reference paper used."""
-    return float(
-        np.sqrt(
-            np.mean(
-                (np.log1p(y_pred) - np.log1p(y_true)) ** 2
-            )
-        )
-    )
-
-
-def score_report(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    return {
-        "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
-        "rmsle": compute_rmsle(y_true, y_pred),
-        "mae": float(mean_absolute_error(y_true, y_pred)),
-        "r2": float(r2_score(y_true, y_pred)),
-    }
 
 
 def make_figures(df: pd.DataFrame) -> list[Path]:
@@ -200,153 +176,12 @@ def make_figures(df: pd.DataFrame) -> list[Path]:
     return paths
 
 
-def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Leakage-safe additions; follows the reference paper featurization ideas."""
-    out = df.copy()
-    out["season_label"] = out["season"].map(SEASON_MAP)
-    out["weathersit_label"] = out["weathersit"].map(WEATHER_MAP)
-
-    out["hour_sin"] = np.sin(2 * np.pi * out["hr"] / 24.0)
-    out["hour_cos"] = np.cos(2 * np.pi * out["hr"] / 24.0)
-    out["dayofweek_sin"] = np.sin(2 * np.pi * out["weekday"] / 7.0)
-    out["dayofweek_cos"] = np.cos(2 * np.pi * out["weekday"] / 7.0)
-    out["month_sin"] = np.sin(2 * np.pi * (out["mnth"] - 1) / 12.0)
-    out["month_cos"] = np.cos(2 * np.pi * (out["mnth"] - 1) / 12.0)
-    out["is_rush_hour"] = out["hr"].isin([7, 8, 9, 17, 18, 19]).astype(int)
-    out["is_weekend"] = (out["weekday"] >= 5).astype(int)
-
-    # Reference paper: 'weekday peak hours are 7-9am and 5-7pm, weekend peak
-    # hours are 10am-6pm.' Encode that as a 3-way categorical flag.
-    def peak_bucket(row) -> str:
-        if row["workingday"] == 1:
-            if row["hr"] in (7, 8, 9, 17, 18, 19):
-                return "weekday_peak"
-            return "weekday_off"
-        if 10 <= row["hr"] <= 18:
-            return "weekend_peak"
-        return "weekend_off"
-
-    out["peak_time"] = out.apply(peak_bucket, axis=1)
-    out["temp_bucket"] = pd.qcut(out["atemp"], q=4, labels=["cold", "mild", "warm", "hot"], duplicates="drop").astype(str)
-    return out
-
-
-def build_pipeline() -> Pipeline:
-    prep = ColumnTransformer(
-        transformers=[
-            ("num", StandardScaler(), ALL_NUMERIC),
-            (
-                "cat",
-                OneHotEncoder(handle_unknown="ignore", sparse_output=False),
-                ALL_CATEGORICAL,
-            ),
-        ]
-    )
-    return Pipeline(steps=[("prep", prep), ("reg", LinearRegression())])
-
-
-ALL_NUMERIC = [
-    "temp",
-    "atemp",
-    "hum",
-    "windspeed",
-    "hour_sin",
-    "hour_cos",
-    "dayofweek_sin",
-    "dayofweek_cos",
-    "month_sin",
-    "month_cos",
-    "is_rush_hour",
-    "is_weekend",
-]
-ALL_CATEGORICAL = ["season_label", "weathersit_label", "peak_time", "temp_bucket", "yr", "holiday", "workingday"]
-
-
-def temporal_split(df: pd.DataFrame, test_size: float = 0.2):
-    split_day = df["dteday"].quantile(1 - test_size)
-    mask_test = df["dteday"] > split_day
-    return df[~mask_test], df[mask_test], split_day
-
-
-def evaluate(model, X_te: pd.DataFrame, y_te: pd.Series) -> dict[str, float]:
-    pred = np.clip(model.predict(X_te), 0, None)
-    return score_report(y_te, pred)
-
-
 def main() -> None:
     raw = load_raw()
     data_understanding(raw)
     relationship_eda(raw)
     make_figures(raw)
-
-    df = add_engineered_features(raw)
-    train, test, split_day = temporal_split(df)
-    print(f"Temporal split boundary: {split_day.date()}")
-
-    X_tr, y_tr = df_feature_matrix(train)
-    X_te, y_te = df_feature_matrix(test)
-
-    lin_pipe = build_pipeline()
-    lin_pipe.fit(X_tr, y_tr)
-    lin_metrics = evaluate(lin_pipe, X_te, y_te)
-    print("Linear Regression :", lin_metrics)
-
-    rf_pipe = Pipeline(
-        steps=[
-            (
-                "prep",
-                ColumnTransformer(
-                    transformers=[
-                        ("num", "passthrough", ALL_NUMERIC),
-                        (
-                            "cat",
-                            OneHotEncoder(handle_unknown="ignore", sparse_output=False),
-                            ALL_CATEGORICAL,
-                        ),
-                    ]
-                ),
-            ),
-            ("reg", RandomForestRegressor(random_state=RANDOM_STATE, n_jobs=-1)),
-        ]
-    )
-    param_grid = {
-        "reg__n_estimators": [200, 400],
-        "reg__max_depth": [12, 18, None],
-        "reg__min_samples_leaf": [1, 3, 5],
-    }
-    from sklearn.model_selection import GridSearchCV
-
-    gs = GridSearchCV(
-        rf_pipe,
-        param_grid,
-        cv=TimeSeriesSplit(n_splits=4),
-        scoring="neg_root_mean_squared_error",
-        n_jobs=-1,
-    )
-    gs.fit(X_tr, y_tr)
-    print("Best RF params:", gs.best_params_)
-    rf_metrics = evaluate(gs.best_estimator_, X_te, y_te)
-    print("Random Forest     :", rf_metrics)
-
-    (MODELS_DIR / "baseline_metrics.json").write_text(
-        json.dumps(
-            {
-                "linear": lin_metrics,
-                "random_forest": rf_metrics,
-                "best": "random_forest"
-                if rf_metrics["rmse"] < lin_metrics["rmse"]
-                else "linear",
-                "split_date": str(split_day.date()),
-            },
-            indent=2,
-        )
-    )
-    print("Saved metrics ->", MODELS_DIR / "baseline_metrics.json")
-
-
-def df_feature_matrix(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
-    feature_cols = ALL_NUMERIC + ALL_CATEGORICAL
-    return df[feature_cols], df["cnt"]
+    print("EDA finished. (Modeling lives in src/preprocess_and_baseline.py)")
 
 
 if __name__ == "__main__":

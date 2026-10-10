@@ -59,6 +59,10 @@ RMSLE penalizes relative errors rather than absolute ones, so under-predicting t
 
 - **Missing values:** none — all 17,379 rows are complete.
 - **Duplicates:** no duplicated rows on `(dteday, hr)`.
+- **Weekday convention:** the dataset codes `weekday` as **Sunday=0 … Saturday=6**
+  (verified: every `2011-01-01`, a Saturday, has `weekday=6`; medians per
+  calendar day confirm the mapping). Features that flag weekend days must test
+  `weekday in (0, 6)`, not `weekday >= 5` (which would catch Fridays).
 - **Target range:** 1 to 977 rentals/hour, mean ≈189, right-skewed (skew ≈1.28) — expected for count data; this skew is also why RMSLE (log-scale) is a sensible headline metric, as the paper observed.
 
 ---
@@ -103,7 +107,7 @@ Implemented in `src/preprocess_and_baseline.py`, aligned with the paper's §2.2 
 
 | Feature | Purpose | Paper analogue |
 |---|---|---|
-| `temp_bucket` | Discretize feels-like temperature into 4 quantile buckets (cold/mild/warm/hot) to help linear models handle the non-linear temp response | "Discretizing continuous variables" (§2.2, bullet 1) |
+| `temp_bucket` | Discretize feels-like temperature into 4 quantile buckets (cold/mild/warm/hot) to help linear models handle the non-linear temp response. **Bucket edges are fitted on the training split only** (via `fit_temp_bucket_edges`) and reused unchanged for the test split and the demo app, so bucketing is consistent everywhere and test data cannot leak into the feature definition | "Discretizing continuous variables" (§2.2, bullet 1) |
 | `peak_time` | 3-way bucket: `weekday_peak` (7–9 AM, 5–7 PM), `weekend_peak` (10 AM–6 PM), or off-peak — validated by our EDA figure 12 | "Adding peak hour indicator variables" (§2.2, bullet 6) |
 | `hour_sin`, `hour_cos` | Cyclic hour encoding so 23:00 is numerically near 00:00 | modern complement to the paper's hour feature |
 | `dayofweek_sin/cos` | Cyclic weekday encoding | the paper's "day of week" feature (§2.2, bullet 3) |
@@ -128,10 +132,10 @@ The paper tested 7 models (Linear, GLMNet, GBM, PCR, SVR, RF, CTree) — the *ad
 
 | Model | RMSLE (primary) | RMSE | MAE | R² |
 |---|---:|---:|---:|---:|
-| Linear Regression | 1.050 | 119.47 | 90.54 | 0.706 |
-| Random Forest (best) | **0.410** | **79.70** | **52.67** | **0.869** |
+| Linear Regression | 1.045 | 121.13 | 91.05 | 0.698 |
+| Random Forest (best) | **0.410** | **79.98** | **52.84** | **0.868** |
 
-Best model per the script: **Random Forest** (`max_depth=None, min_samples_leaf=1, n_estimators=400`).
+Best model per the script: **Random Forest** (`max_depth=18, min_samples_leaf=1, n_estimators=400`).
 
 **Comparison with the reference paper:** our RF's test RMSLE (0.410) is in the same range as the paper's best CV models (CTree 0.460, RF 0.503). Direct comparison is not exact — different (tougher, time-ordered) test split, no leaderboard, and our feature set — but the pattern matches: **tree-based models dominate, plain linear models lag**. The paper's variable-importance finding also reproduces in our data: hour-related features (`hour_sin/cos`, `peak_time`, `is_rush_hour`) are by far the most predictive, weather features contribute a smaller but real effect.
 
@@ -152,9 +156,9 @@ Best model per the script: **Random Forest** (`max_depth=None, min_samples_leaf=
   5–7 PM, weekend 10 AM–6 PM), quantile temperature buckets, cyclic
   hour/weekday/month encodings, and dropping collinear raw `temp` — plus a
   leakage-safe temporal split produced a strong baseline.
-- **Random Forest is the Person A baseline to beat: RMSLE 0.410, RMSE 79.7,
-  R² 0.869** on the held-out 2012-08-08 → 2012-12-31 period, versus Linear
-  Regression's RMSLE 1.050 / R² 0.706. This reproduces the reference paper's
+- **Random Forest is the Person A baseline to beat: RMSLE 0.410, RMSE 80.0,
+  R² 0.868** on the held-out 2012-08-08 → 2012-12-31 period, versus Linear
+  Regression's RMSLE 1.045 / R² 0.698. This reproduces the reference paper's
   central finding that tree-based models substantially outperform plain
   linear models on this data.
 - Deliverables from this half: reproducible EDA pipeline (12 figures), the

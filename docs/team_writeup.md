@@ -33,6 +33,6 @@ Reproduce everything with three commands (see README): `python src/data_understa
 
 ## 5. Conclusions
 
-**Person A:** Hour of day is by far the strongest predictor, with weather variables contributing a smaller but consistent effect. The paper-aligned Random Forest baseline achieves **RMSLE 0.410, RMSE 79.7, R² 0.869** on the held-out temporal test period, substantially beating Linear Regression (RMSLE 1.050, R² 0.706) and reproducing the reference paper's finding that tree-based models dominate this data. The full EDA/preprocessing/baseline pipeline is reproducible from the README commands and provides the benchmark the advanced models must beat.
+**Person A:** Hour of day is by far the strongest predictor, with weather variables contributing a smaller but consistent effect. The paper-aligned Random Forest baseline achieves **RMSLE 0.410, RMSE 80.0, R² 0.868** on the held-out temporal test period, substantially beating Linear Regression (RMSLE 1.045, R² 0.698) and reproducing the reference paper's finding that tree-based models dominate this data. The full EDA/preprocessing/baseline pipeline is reproducible from the README commands and provides the benchmark the advanced models must beat.
 
 <!-- PERSON B: add final model comparison + overall conclusion here -->
