@@ -46,19 +46,19 @@ Two dataset details mattered a lot during preprocessing:
 
 All figures in this section are in `reports/` and are produced by `src/data_understanding.py`, so they can be regenerated with one command.
 
-**Hourly demand is strongly bimodal on working days.** ![Hourly box plot](reports/03_hourly_box.png)
+**Hourly demand is strongly bimodal on working days.** ![Hourly box plot](../reports/03_hourly_box.png)
 
 Working days show two clear peaks — a morning spike around 8 AM and a larger evening one around 5–6 PM. Non-working days are completely different: a single broad hump from late morning to early evening, no commute spikes.
 
-![Working vs non-working day hourly profile](reports/12_workingday_hourly_profile.png)
+![Working vs non-working day hourly profile](../reports/12_workingday_hourly_profile.png)
 
 The dashed lines in this figure mark the cut-offs we chose for a `peak_time` feature: weekday peaks 7–9 AM and 5–7 PM, weekend "peak" 10 AM–6 PM. This is the one EDA finding that fed directly into the feature set (and it matches the peak-hour observation in the reference paper).
 
 **Demand grows year-over-year and is strongly seasonal.** 
 
-![Daily trend](reports/02_daily_trend.png)
+![Daily trend](../reports/02_daily_trend.png)
 
-![Monthly trend per year](reports/11_monthly_by_year.png)
+![Monthly trend per year](../reports/11_monthly_by_year.png)
 
 2012 is visibly higher than 2011 for every month (the system grew), and both years peak in summer (Jun–Sep) and bottom out in winter. We keep the `yr` flag so the model can absorb that growth rather than pretending year 2 will look like year 1.
 
@@ -130,7 +130,7 @@ Two readable patterns:
 
 Checking the predictions against reality over the first two test weeks (Random Forest, orange, vs the actual series in black):
 
-![Baseline predictions vs actual](reports/13_baseline_pred_vs_actual.png)
+![Baseline predictions vs actual](../reports/13_baseline_pred_vs_actual.png)
 
 The RF tracks the daily shape almost peak-for-peak; the visible misses are mostly on days with unusual weather, and systematically *under* forecast the tallest evening peaks. Residual plots (`reports/14_baseline_residuals.png`) tell the same story: fairly balanced at low counts, mildly biased high around the peaks. Against the reference paper, our RF (0.410) lands close to their best models (CTree 0.460, RF 0.503) even though their CV numbers are not directly comparable to a stricter time-ordered split — the "trees win" pattern is the same.
 
