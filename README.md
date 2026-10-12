@@ -371,6 +371,8 @@ python src/train_models.py
 
 Only source code and code documentation are maintained in the GitHub repository.
 
+## Repository Structure
+
 ```text
 bike-rental-demand-forecasting/
 │
@@ -384,28 +386,18 @@ bike-rental-demand-forecasting/
 ├── scripts/
 │   └── download_data.py
 │
-└── src/
-    ├── data_understanding.py
-    ├── preprocess_and_baseline.py
-    ├── model_config.py
-    ├── feature_engineering.py
-    ├── model_training.py
-    ├── evaluation.py
-    └── train_models.py
-```
-
-The following are generated or downloaded locally and are not required to be stored in Git:
-
-```text
-data/       → downloaded dataset
-models/     → trained models and metric files
-reports/    → generated visualizations and diagnostics
-.venv/      → local Python environment
-```
-
-Project write-ups and presentation files are maintained separately from the source-code repository.
-
----
+├── src/
+│   ├── data_understanding.py
+│   ├── preprocess_and_baseline.py
+│   ├── model_config.py
+│   ├── feature_engineering.py
+│   ├── model_training.py
+│   ├── evaluation.py
+│   └── train_models.py
+│
+└── deliverables/
+    ├── Forecasting_Bike_Rental_Demand_Presentation.pptx
+    └── Forecasting_Bike_Rental_Demand_Report.pdf
 
 ## Setup and Installation
 
